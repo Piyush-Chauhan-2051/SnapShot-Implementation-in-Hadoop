@@ -1,0 +1,83 @@
+Overview
+HDFS Snapshots are read-only point-in-time copies of the file system. Snapshots can be taken on a subtree of the file system or the entire file system. 
+Use cases of snapshots: 
+•	Data backup
+•	Protection against user errors
+•	Disaster recovery.
+
+Important Points to remember
+
+•	Snapshot of the snapshottable directory have to take every day time to create the snapshot but in the production environment this 
+activity can be scheduled through cronjob.
+
+•	Be cautious while scheduling the cron job while creating of snapshot this will lead to increase in total numbers of the file 
+system objects in cluster. If unmonitoried, this could leads to various performance issues with Namenode so always plan some 
+retention policy for the existing snapsho
+
+SnapShot Operations with Practical
+Hdfs dfsadmin commands
+•	[-allowSnapshot <snapshotDir>]
+•	[-disallowSnapshot <snapshotDir>]
+Example : 
+hdfs dfs -mkdir -p /user/snapshotdemo/demo
+hdfs dfs -put /tmp/family.txt /user/snapshotdemo/demo
+
+hdfs dfsadmin -allowSnapshot /user/snapshotdemo/demo
+
+Allowing snaphot on /user/snapshotdemo/demo succeeded.
+
+Note : Now /user/snapshotdemo/demo is snapshottable. After allowing any directory snapshottable, .snapshot (hidden directory) will 
+be created automatically for storing the snapshots and it will not be visible in the snapshottable directory you have to go to 
+this path manually.
+
+hdfs dfsadmin -disallowSnapshot /user/snapshotdemo/demo
+	To disallow any snapshottable directory, first delete all the snapshot available in the snapshottable directory.
+
+Hdfs dfs commands
+•	[-createSnapshot <snapshotDir> [<snapshotName>]]
+•	[-deleteSnapshot <snapshotDir><snapshotName>]
+•	[-renameSnapshot <snapshotDir><oldName><newName>]
+
+hdfs dfs -createSnapshot /user/snapshotdemo/demo/ <snapshot name i.e. family>
+	hdfs dfs -createSnapshot /user/snapshotdemo/demo <SnapShot Name>
+	If you does not specify the name it will create with default name which is combination of timestamp. i.e. s20190626-101958.051
+hdfs dfs -deleteSnapshot /user/snapshotdemo/demo/ family_members
+	hdfs dfs -deleteSnapshot /user/snapshotdemo/demo <snapshotname>
+hdfs dfs -renameSnapshot /user/snapshotdemo/demo/ <Old SS Name ><New SS Name>
+	hdfs dfs -renameSnapshot /user/snapshotdemo/demo family_updated family_updated_renametesting
+
+Hdfs commands
+•	hdfs lsSnapshottableDir
+•	snapshotDiff
+
+hdfs snapshotDiff <path/of/snapshottable/directory>.snapshot/<Snapshot1>.snapshot/<SnapShot2>
+hdfs snapshotDiff /user/snapshotdemo/demo/ .snapshot/family_members .snapshot/family_updated
+
+hdfs lsSnapshotDir
+drwxr-xr-x 0 hdfs hdfs 0 2019-06-24 02:11 1 65536 /user/snapshotdemo/demo
+
+Common Errors and Solution
+Error: deleteSnapshot: Permission denied. user=<user name> is not the owner of inode=<user name>
+Solution: Check the login user and owner of the snapshot
+
+Error: deleteSnapshot: Cannot delete snapshot .snapshot/s20190620-154538.561 from path /user/njcn3d: the snapshot does not exist.
+       Wrong:hdfs dfs -deleteSnapshot /user/njcn3d/ .snapshot/s20190620-154538.561
+       Correct: hdfs dfs -deleteSnapshot /user/njcn3d/ <snapshot name example snaptest>
+
+Error: DeleteSnapshot: Modification on a read-only snapshot is disallowed.
+       Wrong: hdfs dfs -deleteSnapshot /user/njcn3d/.snapshot<snapshot name example snaptest>
+       Correct: hdfs dfs -deleteSnapshot /user/njcn3d/ <snapshot name example snaptest>
+       
+      Here path have to give till snapshottable directory, no need to give till path .snapshot
+
+Error: disallowSnapshot: The directory /user/njcn3d has snapshot(s). Please redo the operation after removing all the snapshots.
+        Command: hdfs dfsadmin -disallowSnapshot /path/till/snapshottable/directory
+        Solution: All the snapshot required to be deleted before making the directory non snapshottable. i.e. Delete all the 
+        snapshot available first before disallow any directory to be snapshottable then run the Command.
+
+Restoring back from thrash after accidental delete.
+    hdfs dfs -cp hdfs://<URI>/user/hdfs/.Trash/Current/user/<username>/ /user/<username>
+    hdfs dfs -rm -r -skipTrash /user/njcn3d/ Use of skipTrash means deleted data will not to trash i.e. Data will be 
+    deleted permanently.
+
+
